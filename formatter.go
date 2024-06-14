@@ -2,7 +2,6 @@ package gcfstructuredlogformatter
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"cloud.google.com/go/logging"
 	"github.com/sirupsen/logrus"
@@ -39,11 +38,12 @@ type Formatter struct {
 
 // logEntry is an abbreviated version of the Google "structured logging" data structure.
 type logEntry struct {
-	Severity    string            `json:"severity,omitempty"`
-	Trace       string            `json:"logging.googleapis.com/trace,omitempty"`
-	SpanID      string            `json:"logging.googleapis.com/spanId,omitempty"`
-	Labels      map[string]string `json:"labels,omitempty"`
-	JSONPayload logrus.Fields     `json:"jsonPayload"`
+	Message  string            `json:"message"`
+	Severity string            `json:"severity,omitempty"`
+	Trace    string            `json:"logging.googleapis.com/trace,omitempty"`
+	SpanID   string            `json:"logging.googleapis.com/spanId,omitempty"`
+	Labels   map[string]string `json:"labels,omitempty"`
+	Dummy    string            `json:"dummy,omitempty"`
 }
 
 // New creates a new formatter.
@@ -75,8 +75,10 @@ func (f *Formatter) Format(entry *logrus.Entry) ([]byte, error) {
 	}
 
 	newEntry := logEntry{
+		Message:  entry.Message,
 		Severity: severity.String(),
 		Labels:   map[string]string{},
+		Dummy:    "dummy",
 	}
 	if entry.Context != nil {
 		// try to get the trace id from the context
@@ -91,12 +93,9 @@ func (f *Formatter) Format(entry *logrus.Entry) ([]byte, error) {
 		newEntry.Labels[key] = value
 	}
 
-	newEntry.JSONPayload = entry.Data
-	newEntry.JSONPayload["message"] = entry.Message // This is the log message.
-
-	if severity == logging.Error && entry.Caller != nil {
-		newEntry.JSONPayload["exception"] = fmt.Sprintf("%s\n\t%s:%d\n", entry.Caller.Function, entry.Caller.File, entry.Caller.Line)
-	}
+	// if severity == logging.Error && entry.Caller != nil {
+	// 	newEntry.JSONPayload["exception"] = fmt.Sprintf("%s\n\t%s:%d\n", entry.Caller.Function, entry.Caller.File, entry.Caller.Line)
+	// }
 	contents, err := json.Marshal(newEntry)
 	if err != nil {
 		return nil, err
