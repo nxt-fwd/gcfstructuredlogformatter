@@ -2,15 +2,18 @@ package gcfstructuredlogformatter
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"cloud.google.com/go/logging"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // ContextKey is the type for the context key.
 // The Go docs recommend not using any built-in type for context keys in order
 // to ensure that there are no collisions:
-//    https://golang.org/pkg/context/#WithValue
+//
+//	https://golang.org/pkg/context/#WithValue
 type ContextKey string
 
 // ContextKey constants.
@@ -36,10 +39,11 @@ type Formatter struct {
 
 // logEntry is an abbreviated version of the Google "structured logging" data structure.
 type logEntry struct {
-	Message  string            `json:"message"`
-	Severity string            `json:"severity,omitempty"`
-	Trace    string            `json:"logging.googleapis.com/trace,omitempty"`
-	Labels   map[string]string `json:"labels,omitempty"`
+	Severity    string            `json:"severity,omitempty"`
+	Trace       string            `json:"logging.googleapis.com/trace,omitempty"`
+	SpanID      string            `json:"logging.googleapis.com/spanId,omitempty"`
+	Labels      map[string]string `json:"labels,omitempty"`
+	JSONPayload logrus.Fields     `json:"jsonPayload"`
 }
 
 // New creates a new formatter.
@@ -71,22 +75,32 @@ func (f *Formatter) Format(entry *logrus.Entry) ([]byte, error) {
 	}
 
 	newEntry := logEntry{
-		Message:  entry.Message,
 		Severity: severity.String(),
 		Labels:   map[string]string{},
 	}
 	if entry.Context != nil {
-		if v, okay := entry.Context.Value(ContextKeyTrace).(string); okay {
-			newEntry.Trace = v
+		// try to get the trace id from the context
+		span := trace.SpanFromContext(entry.Context)
+		spanContext := span.SpanContext()
+		if spanContext.IsValid() {
+			newEntry.SpanID = spanContext.SpanID().String()
+			newEntry.Trace = spanContext.TraceID().String()
 		}
 	}
 	for key, value := range f.Labels {
 		newEntry.Labels[key] = value
 	}
 
+	newEntry.JSONPayload = entry.Data
+	newEntry.JSONPayload["message"] = entry.Message // This is the log message.
+
+	if severity == logging.Error && entry.Caller != nil {
+		newEntry.JSONPayload["exception"] = fmt.Sprintf("%s\n\t%s:%d\n", entry.Caller.Function, entry.Caller.File, entry.Caller.Line)
+	}
 	contents, err := json.Marshal(newEntry)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println(string(contents))
 	return append(contents, []byte("\n")...), nil
 }

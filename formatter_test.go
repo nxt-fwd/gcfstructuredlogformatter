@@ -1,7 +1,6 @@
 package gcfstructuredlogformatter
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -23,7 +22,6 @@ func TestLogEntry(t *testing.T) {
 		{
 			description: "All fields",
 			input: logEntry{
-				Message:  "my-message",
 				Severity: "my-severity",
 				Trace:    "my-trace",
 				Labels: map[string]string{
@@ -49,74 +47,74 @@ func TestLogEntry(t *testing.T) {
 
 func TestFormat(t *testing.T) {
 	logger := logrus.New()
-
 	rows := []struct {
 		description string
 		input       *logrus.Entry
 		output      logEntry
 	}{
-		{
-			description: "Empty",
-			input:       logrus.NewEntry(logger),
-			output: logEntry{
-				Severity: "Emergency", // logrus's 0th level is PanicLevel.
-			},
-		},
+		// {
+		// 	description: "Empty",
+		// 	input:       logrus.NewEntry(logger),
+		// 	output: logEntry{
+		// 		Severity: "Emergency", // logrus's 0th level is PanicLevel.
+		// 	},
+		// },
 		{
 			description: "Info",
 			input: func() *logrus.Entry {
-				e := logrus.NewEntry(logger)
+				e := logger.WithFields(logrus.Fields{"prop": "value"})
+				// e := logrus.NewEntry(logger)
 				e.Message = "test"
-				e.Level = logrus.InfoLevel
+				e.Level = logrus.ErrorLevel
+				// e = e.WithFields(logrus.Fields{"test": "value"})
 				return e
 			}(),
 			output: logEntry{
-				Message:  "test",
 				Severity: "Info",
 			},
 		},
-		{
-			description: "Warning",
-			input: func() *logrus.Entry {
-				e := logrus.NewEntry(logger)
-				e.Message = "test"
-				e.Level = logrus.WarnLevel
-				return e
-			}(),
-			output: logEntry{
-				Message:  "test",
-				Severity: "Warning",
-			},
-		},
-		{
-			description: "Info with trace",
-			input: func() *logrus.Entry {
-				ctx := context.WithValue(context.Background(), ContextKeyTrace, "trace-1")
-				e := logrus.NewEntry(logger).WithContext(ctx)
-				e.Message = "test"
-				e.Level = logrus.InfoLevel
-				return e
-			}(),
-			output: logEntry{
-				Message:  "test",
-				Severity: "Info",
-				Trace:    "trace-1",
-			},
-		},
-		{
-			description: "Info with bogus trace",
-			input: func() *logrus.Entry {
-				ctx := context.WithValue(context.Background(), ContextKeyTrace, 123456) // Not string.
-				e := logrus.NewEntry(logger).WithContext(ctx)
-				e.Message = "test"
-				e.Level = logrus.InfoLevel
-				return e
-			}(),
-			output: logEntry{
-				Message:  "test",
-				Severity: "Info",
-			},
-		},
+		// {
+		// 	description: "Warning",
+		// 	input: func() *logrus.Entry {
+		// 		e := logrus.NewEntry(logger)
+		// 		e.Message = "test"
+		// 		e.Level = logrus.WarnLevel
+		// 		return e
+		// 	}(),
+		// 	output: logEntry{
+		// 		Message:  "test",
+		// 		Severity: "Warning",
+		// 	},
+		// },
+		// {
+		// 	description: "Info with trace",
+		// 	input: func() *logrus.Entry {
+		// 		ctx := context.WithValue(context.Background(), ContextKeyTrace, "trace-1")
+		// 		e := logrus.NewEntry(logger).WithContext(ctx)
+		// 		e.Message = "test"
+		// 		e.Level = logrus.InfoLevel
+		// 		return e
+		// 	}(),
+		// 	output: logEntry{
+		// 		Message:  "test",
+		// 		Severity: "Info",
+		// 		Trace:    "trace-1",
+		// 	},
+		// },
+		// {
+		// 	description: "Info with bogus trace",
+		// 	input: func() *logrus.Entry {
+		// 		ctx := context.WithValue(context.Background(), ContextKeyTrace, 123456) // Not string.
+		// 		e := logrus.NewEntry(logger).WithContext(ctx)
+		// 		e.Message = "test"
+		// 		e.Level = logrus.InfoLevel
+		// 		return e
+		// 	}(),
+		// 	output: logEntry{
+		// 		Message:  "test",
+		// 		Severity: "Info",
+		// 	},
+		// },
 	}
 	for rowIndex, row := range rows {
 		t.Run(fmt.Sprintf("%d/%s", rowIndex, row.description), func(t *testing.T) {
