@@ -101,6 +101,5 @@ func (f *Formatter) Format(entry *logrus.Entry) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(string(contents))
 	return append(contents, []byte("\n")...), nil
 }
