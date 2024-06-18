@@ -36,16 +36,6 @@ type Formatter struct {
 	Labels map[string]string // This is an optional map of additional "labels".
 }
 
-// logEntry is an abbreviated version of the Google "structured logging" data structure.
-type logEntry struct {
-	Message  string            `json:"message"`
-	Severity string            `json:"severity,omitempty"`
-	Trace    string            `json:"logging.googleapis.com/trace,omitempty"`
-	SpanID   string            `json:"logging.googleapis.com/spanId,omitempty"`
-	Labels   map[string]string `json:"labels,omitempty"`
-	Dummy    string            `json:"dummy,omitempty"`
-}
-
 // New creates a new formatter.
 func New() *Formatter {
 	f := &Formatter{
@@ -74,29 +64,31 @@ func (f *Formatter) Format(entry *logrus.Entry) ([]byte, error) {
 		severity = value
 	}
 
-	newEntry := logEntry{
-		Message:  entry.Message,
-		Severity: severity.String(),
-		Labels:   map[string]string{},
-		Dummy:    "dummy",
-	}
+	mapEntry := map[string]interface{}{}
+	mapEntry["severity"] = severity.String()
+	mapEntry["message"] = entry.Message
+
 	if entry.Context != nil {
 		// try to get the trace id from the context
 		span := trace.SpanFromContext(entry.Context)
 		spanContext := span.SpanContext()
 		if spanContext.IsValid() {
-			newEntry.SpanID = spanContext.SpanID().String()
-			newEntry.Trace = spanContext.TraceID().String()
+			mapEntry["logging.googleapis.com/trace"] = spanContext.TraceID().String()
+			mapEntry["logging.googleapis.com/spanId"] = spanContext.SpanID().String()
 		}
 	}
-	for key, value := range f.Labels {
-		newEntry.Labels[key] = value
+	if len(f.Labels) > 0 {
+		labels := map[string]string{}
+		for key, value := range f.Labels {
+			labels[key] = value
+		}
+		mapEntry["labels"] = labels
 	}
 
-	// if severity == logging.Error && entry.Caller != nil {
-	// 	newEntry.JSONPayload["exception"] = fmt.Sprintf("%s\n\t%s:%d\n", entry.Caller.Function, entry.Caller.File, entry.Caller.Line)
-	// }
-	contents, err := json.Marshal(newEntry)
+	for key, value := range entry.Data {
+		mapEntry[key] = value
+	}
+	contents, err := json.Marshal(mapEntry)
 	if err != nil {
 		return nil, err
 	}
