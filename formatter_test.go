@@ -18,8 +18,12 @@ func TestFormat(t *testing.T) {
 	}{
 		{
 			description: "Empty Entry",
-			input:       logrus.NewEntry(logger),
-			output:      []byte(`{"message":"","severity":"Emergency"}` + "\n"),
+			input: func() *logrus.Entry {
+				e := logrus.NewEntry(logger)
+				e.Level = logrus.InfoLevel
+				return e
+			}(),
+			output: []byte(`{"message":"","severity":"Info"}` + "\n"),
 		},
 		{
 			description: "Info Entry",
