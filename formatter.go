@@ -44,6 +44,11 @@ func New() *Formatter {
 	return f
 }
 
+// AddLabel adds a label to the formatter.
+func (f *Formatter) AddLabel(key, value string) {
+	f.Labels[key] = value
+}
+
 // Levels are the available logging levels.
 func (f *Formatter) Levels() []logrus.Level {
 	return []logrus.Level{
@@ -82,7 +87,7 @@ func (f *Formatter) Format(entry *logrus.Entry) ([]byte, error) {
 		for key, value := range f.Labels {
 			labels[key] = value
 		}
-		mapEntry["labels"] = labels
+		mapEntry["logging.googleapis.com/labels"] = labels
 	}
 
 	for key, value := range entry.Data {
