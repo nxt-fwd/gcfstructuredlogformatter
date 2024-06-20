@@ -10,7 +10,6 @@ import (
 
 func TestFormat(t *testing.T) {
 	logger := logrus.New()
-	logger.Debug("test")
 	rows := []struct {
 		description string
 		input       *logrus.Entry
@@ -49,7 +48,6 @@ func TestFormat(t *testing.T) {
 
 func TestFormatWithLabels(t *testing.T) {
 	logger := logrus.New()
-	logger.Debug("test")
 	rows := []struct {
 		description string
 		input       *logrus.Entry

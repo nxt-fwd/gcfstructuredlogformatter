@@ -8,16 +8,18 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// ContextKey is the type for the context key.
-// The Go docs recommend not using any built-in type for context keys in order
-// to ensure that there are no collisions:
-//
-//	https://golang.org/pkg/context/#WithValue
-type ContextKey string
-
-// ContextKey constants.
+// Keys defined https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry
 const (
-	ContextKeyTrace ContextKey = "trace" // This is the key for the trace identifier.
+	// TraceKey is the key for the trace identifier.
+	TraceKey = "logging.googleapis.com/trace"
+	// SpanKey is the key for the span identifier.
+	SpanKey = "logging.googleapis.com/spanId"
+	// SeverityKey is the key for the severity.
+	SeverityKey = "severity"
+	// MessageKey is the key for the message.
+	MessageKey = "message"
+	// LabelsKey is the key for the labels.
+	LabelsKey = "logging.googleapis.com/labels"
 )
 
 // logrusToGoogleSeverityMap maps a logrus level to a Google severity.
@@ -70,16 +72,16 @@ func (f *Formatter) Format(entry *logrus.Entry) ([]byte, error) {
 	}
 
 	mapEntry := map[string]interface{}{}
-	mapEntry["severity"] = severity.String()
-	mapEntry["message"] = entry.Message
+	mapEntry[SeverityKey] = severity.String()
+	mapEntry[MessageKey] = entry.Message
 
 	if entry.Context != nil {
 		// try to get the trace id from the context
 		span := trace.SpanFromContext(entry.Context)
 		spanContext := span.SpanContext()
 		if spanContext.IsValid() {
-			mapEntry["logging.googleapis.com/trace"] = spanContext.TraceID().String()
-			mapEntry["logging.googleapis.com/spanId"] = spanContext.SpanID().String()
+			mapEntry[TraceKey] = spanContext.TraceID().String()
+			mapEntry[SpanKey] = spanContext.SpanID().String()
 		}
 	}
 	if len(f.Labels) > 0 {
@@ -87,7 +89,7 @@ func (f *Formatter) Format(entry *logrus.Entry) ([]byte, error) {
 		for key, value := range f.Labels {
 			labels[key] = value
 		}
-		mapEntry["logging.googleapis.com/labels"] = labels
+		mapEntry[LabelsKey] = labels
 	}
 
 	for key, value := range entry.Data {
